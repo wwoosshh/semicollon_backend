@@ -28,10 +28,21 @@ export class PostsService {
     return profile?.role === 'admin';
   }
 
-  list(userId: string | undefined, category: string | undefined) {
+  // member 글의 권한 경계는 "유효한 토큰"이 아니라 "profiles 행이 있는 실제 부원"이다
+  private async isMember(userId: string | undefined): Promise<boolean> {
+    if (!userId) return false;
+    const profile = await this.prisma.profiles.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    return !!profile;
+  }
+
+  async list(userId: string | undefined, category: string | undefined) {
+    const member = await this.isMember(userId);
     return this.prisma.posts.findMany({
       where: {
-        ...(userId ? {} : { visibility: 'public' }),
+        ...(member ? {} : { visibility: 'public' }),
         ...(category ? { category } : {}),
       },
       orderBy: { created_at: 'desc' },
@@ -44,7 +55,10 @@ export class PostsService {
       where: { id },
       include: { profiles: { select: { name: true } } },
     });
-    if (!post || (post.visibility === 'member' && !userId)) {
+    if (
+      !post ||
+      (post.visibility === 'member' && !(await this.isMember(userId)))
+    ) {
       throw new NotFoundException('게시글을 찾을 수 없습니다.');
     }
     return post;

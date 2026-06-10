@@ -51,6 +51,19 @@ describe('PostsService', () => {
     await expect(svc.getOne(1, undefined)).rejects.toThrow(NotFoundException);
   });
 
+  it('hides member posts from a valid token without a profile', async () => {
+    const prisma = makePrisma({
+      posts: {
+        findUnique: jest.fn().mockResolvedValue({ id: 1n, visibility: 'member' }),
+      },
+      profiles: { findUnique: jest.fn().mockResolvedValue(null) },
+    });
+    const svc = new PostsService(prisma);
+    await expect(svc.getOne(1, 'ghost-token-user')).rejects.toThrow(
+      NotFoundException,
+    );
+  });
+
   it('rejects notice creation by a non-admin', async () => {
     const prisma = makePrisma();
     const svc = new PostsService(prisma);

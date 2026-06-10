@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -41,6 +42,9 @@ export class AdminController {
 
   @Patch('settings/recruit')
   async setRecruit(@Body() dto: SetRecruitDto) {
+    if (dto.start && dto.end && new Date(dto.start) > new Date(dto.end)) {
+      throw new BadRequestException('시작일은 마감일보다 앞서야 합니다.');
+    }
     await this.settings.setRecruit(dto.start ?? null, dto.end ?? null);
     return this.settings.getRecruit();
   }

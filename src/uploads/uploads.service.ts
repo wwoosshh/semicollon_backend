@@ -2,7 +2,13 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { SupabaseAdminService } from '../supabase/supabase-admin.service';
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+// 확장자는 사용자가 보낸 파일명이 아니라 검증된 mimetype에서 결정한다 (spoofing 방지)
+const EXT_BY_MIME: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+};
 const MAX_SIZE = 5 * 1024 * 1024;
 
 @Injectable()
@@ -10,13 +16,13 @@ export class UploadsService {
   constructor(private readonly supabase: SupabaseAdminService) {}
 
   async upload(file: Express.Multer.File): Promise<{ url: string }> {
-    if (!ALLOWED_TYPES.includes(file.mimetype)) {
+    const ext = EXT_BY_MIME[file.mimetype];
+    if (!ext) {
       throw new BadRequestException('이미지 파일만 업로드할 수 있습니다.');
     }
     if (file.size > MAX_SIZE) {
       throw new BadRequestException('파일 크기는 5MB 이하여야 합니다.');
     }
-    const ext = file.originalname.split('.').pop() ?? 'bin';
     const path = `${randomUUID()}.${ext}`;
     const { error } = await this.supabase.uploadImage(
       path,
