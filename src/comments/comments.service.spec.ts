@@ -49,6 +49,34 @@ describe('CommentsService', () => {
     );
   });
 
+  it('maps authors to { id, name } and deleted authors to null', async () => {
+    const prisma = makePrisma({
+      comments: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 1n,
+            content: 'hi',
+            created_at: new Date('2026-06-10'),
+            author_id: 'u1',
+            profiles: { name: '홍길동' },
+          },
+          {
+            id: 2n,
+            content: 'bye',
+            created_at: new Date('2026-06-11'),
+            author_id: null,
+            profiles: null,
+          },
+        ]),
+      },
+    });
+    const postsService = makePostsService({ id: 1n, visibility: 'public' });
+    const svc = new CommentsService(prisma, postsService);
+    const result = await svc.listForPost(1, undefined);
+    expect(result[0].author).toEqual({ id: 'u1', name: '홍길동' });
+    expect(result[1].author).toBeNull();
+  });
+
   it('creates a comment for a member on a valid post', async () => {
     const prisma = makePrisma();
     const postsService = makePostsService({ id: 1n, visibility: 'public' });

@@ -18,16 +18,27 @@ export class CommentsService {
     // validates access (member visibility check via PostsService)
     await this.postsService.getOne(postId, userId);
 
-    return this.prisma.comments.findMany({
+    const rows = await this.prisma.comments.findMany({
       where: { post_id: postId },
       orderBy: { created_at: 'asc' },
       select: {
         id: true,
         content: true,
         created_at: true,
+        author_id: true,
         profiles: { select: { name: true } },
       },
     });
+    // author_id가 null이면 탈퇴한 부원 — author: null로 응답
+    return rows.map((c) => ({
+      id: c.id,
+      content: c.content,
+      created_at: c.created_at,
+      author:
+        c.author_id && c.profiles
+          ? { id: c.author_id, name: c.profiles.name }
+          : null,
+    }));
   }
 
   async create(postId: number, userId: string, dto: CreateCommentDto) {
