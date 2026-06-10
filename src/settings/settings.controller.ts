@@ -9,4 +9,9 @@ export class SettingsController {
   getRecruit() {
     return this.settings.getRecruit();
   }
+
+  @Get('about')
+  getAbout() {
+    return this.settings.getAbout();
+  }
 }

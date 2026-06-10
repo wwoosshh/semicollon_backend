@@ -17,6 +17,7 @@ import { SettingsService } from '../settings/settings.service';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { SetRecruitDto } from './dto/set-recruit.dto';
 import { SetInviteCodeDto } from './dto/set-invite-code.dto';
+import { SetAboutDto } from './dto/set-about.dto';
 
 @Controller('admin')
 @UseGuards(AuthGuard, RolesGuard)
@@ -53,5 +54,11 @@ export class AdminController {
   async setInviteCode(@Body() dto: SetInviteCodeDto) {
     await this.settings.setInviteCode(dto.code);
     return { ok: true };
+  }
+
+  @Patch('settings/about')
+  async setAbout(@Body() dto: SetAboutDto) {
+    await this.settings.setAbout(dto);
+    return this.settings.getAbout();
   }
 }

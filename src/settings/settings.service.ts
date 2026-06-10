@@ -7,6 +7,15 @@ export interface RecruitInfo {
   isRecruiting: boolean;
 }
 
+export interface AboutHistoryItem { year: string; title: string; }
+export interface AboutStaffItem { name: string; role: string; note?: string; }
+export interface AboutFaqItem { q: string; a: string; }
+export interface AboutContent {
+  history: AboutHistoryItem[];
+  staff: AboutStaffItem[];
+  faq: AboutFaqItem[];
+}
+
 @Injectable()
 export class SettingsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -46,5 +55,34 @@ export class SettingsService {
       update: { value: code },
       create: { key: 'invite_code', value: code },
     });
+  }
+
+  async getAbout(): Promise<AboutContent> {
+    const [history, staff, faq] = await Promise.all([
+      this.getValue<AboutHistoryItem[]>('about_history'),
+      this.getValue<AboutStaffItem[]>('about_staff'),
+      this.getValue<AboutFaqItem[]>('about_faq'),
+    ]);
+    return { history: history ?? [], staff: staff ?? [], faq: faq ?? [] };
+  }
+
+  async setAbout(content: AboutContent): Promise<void> {
+    await Promise.all([
+      this.prisma.settings.upsert({
+        where: { key: 'about_history' },
+        update: { value: content.history as any },
+        create: { key: 'about_history', value: content.history as any },
+      }),
+      this.prisma.settings.upsert({
+        where: { key: 'about_staff' },
+        update: { value: content.staff as any },
+        create: { key: 'about_staff', value: content.staff as any },
+      }),
+      this.prisma.settings.upsert({
+        where: { key: 'about_faq' },
+        update: { value: content.faq as any },
+        create: { key: 'about_faq', value: content.faq as any },
+      }),
+    ]);
   }
 }

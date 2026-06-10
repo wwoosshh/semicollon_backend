@@ -54,4 +54,24 @@ describe('SettingsService', () => {
     const svc = new SettingsService(prismaWith({ invite_code: 'SECRET99' }));
     await expect(svc.getInviteCode()).resolves.toBe('SECRET99');
   });
+
+  it('getAbout returns empty arrays when keys are missing', async () => {
+    const svc = new SettingsService(prismaWith({}));
+    const about = await svc.getAbout();
+    expect(about).toEqual({ history: [], staff: [], faq: [] });
+  });
+
+  it('getAbout returns stored arrays and setAbout calls upsert 3 times', async () => {
+    const history = [{ year: '2026.06', title: '동아리 창립' }];
+    const staff = [{ name: '홍길동', role: '부장' }];
+    const faq = [{ q: '질문', a: '답변' }];
+    const prisma = prismaWith({ about_history: history, about_staff: staff, about_faq: faq });
+    const svc = new SettingsService(prisma);
+
+    const about = await svc.getAbout();
+    expect(about).toEqual({ history, staff, faq });
+
+    await svc.setAbout({ history, staff, faq });
+    expect(prisma.settings.upsert).toHaveBeenCalledTimes(3);
+  });
 });
