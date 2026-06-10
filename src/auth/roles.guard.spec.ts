@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RolesGuard } from './roles.guard';
 
@@ -45,6 +45,13 @@ describe('RolesGuard', () => {
     const guard = makeGuard(['admin'], undefined);
     await expect(guard.canActivate(mockContext({ id: 'u1' }))).rejects.toThrow(
       ForbiddenException,
+    );
+  });
+
+  it('rejects with 401 when req.user is missing (guard misordering)', async () => {
+    const guard = makeGuard(['admin'], 'admin');
+    await expect(guard.canActivate(mockContext(undefined))).rejects.toThrow(
+      UnauthorizedException,
     );
   });
 });

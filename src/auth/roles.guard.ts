@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../prisma/prisma.service';
@@ -23,6 +24,9 @@ export class RolesGuard implements CanActivate {
     if (!required || required.length === 0) return true;
 
     const req = context.switchToHttp().getRequest();
+    if (!req.user?.id) {
+      throw new UnauthorizedException('로그인이 필요합니다.');
+    }
     const profile = await this.prisma.profiles.findUnique({
       where: { id: req.user.id },
       select: { role: true },
