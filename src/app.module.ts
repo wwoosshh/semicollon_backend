@@ -8,9 +8,11 @@ import { SignupModule } from './signup/signup.module';
 import { MeModule } from './me/me.module';
 import { PostsModule } from './posts/posts.module';
 import { ActivitiesModule } from './activities/activities.module';
+import { ApplicationsModule } from './applications/applications.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, SettingsModule, SupabaseModule, SignupModule, MeModule, PostsModule, ActivitiesModule],
+  imports: [PrismaModule, AuthModule, SettingsModule, SupabaseModule, SignupModule, MeModule, PostsModule, ActivitiesModule, ApplicationsModule, AdminModule],
   controllers: [HealthController],
 })
 export class AppModule {}
