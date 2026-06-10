@@ -10,9 +10,10 @@ import { PostsModule } from './posts/posts.module';
 import { ActivitiesModule } from './activities/activities.module';
 import { ApplicationsModule } from './applications/applications.module';
 import { AdminModule } from './admin/admin.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, SettingsModule, SupabaseModule, SignupModule, MeModule, PostsModule, ActivitiesModule, ApplicationsModule, AdminModule],
+  imports: [PrismaModule, AuthModule, SettingsModule, SupabaseModule, SignupModule, MeModule, PostsModule, ActivitiesModule, ApplicationsModule, AdminModule, UploadsModule],
   controllers: [HealthController],
 })
 export class AppModule {}
