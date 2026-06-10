@@ -13,6 +13,7 @@ describe('SignupService', () => {
   function makeService(opts: {
     storedCode?: string | null;
     createUserResult?: { data: any; error: any };
+    profileCreateFails?: boolean;
   }) {
     const settings = {
       getInviteCode: jest.fn().mockResolvedValue(opts.storedCode ?? null),
@@ -24,9 +25,14 @@ describe('SignupService', () => {
           error: null,
         },
       ),
+      deleteUser: jest.fn().mockResolvedValue({ data: null, error: null }),
     } as any;
     const prisma = {
-      profiles: { create: jest.fn().mockResolvedValue({}) },
+      profiles: {
+        create: opts.profileCreateFails
+          ? jest.fn().mockRejectedValue(new Error('db down'))
+          : jest.fn().mockResolvedValue({}),
+      },
     } as any;
     return { svc: new SignupService(settings, supabase, prisma), supabase, prisma };
   }
@@ -51,5 +57,14 @@ describe('SignupService', () => {
       createUserResult: { data: { user: null }, error: { message: 'taken' } },
     });
     await expect(svc.signup(dto)).rejects.toThrow(BadRequestException);
+  });
+
+  it('deletes the orphan auth user when profile creation fails', async () => {
+    const { svc, supabase } = makeService({
+      storedCode: 'GOOD-CODE',
+      profileCreateFails: true,
+    });
+    await expect(svc.signup(dto)).rejects.toThrow('db down');
+    expect(supabase.deleteUser).toHaveBeenCalledWith('new-uuid');
   });
 });

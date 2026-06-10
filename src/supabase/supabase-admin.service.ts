@@ -22,6 +22,10 @@ export class SupabaseAdminService {
     });
   }
 
+  deleteUser(id: string) {
+    return this.admin.auth.admin.deleteUser(id);
+  }
+
   uploadImage(path: string, buffer: Buffer, contentType: string) {
     return this.admin.storage.from('images').upload(path, buffer, {
       contentType,
