@@ -7,9 +7,10 @@ import { SupabaseModule } from './supabase/supabase.module';
 import { SignupModule } from './signup/signup.module';
 import { MeModule } from './me/me.module';
 import { PostsModule } from './posts/posts.module';
+import { ActivitiesModule } from './activities/activities.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, SettingsModule, SupabaseModule, SignupModule, MeModule, PostsModule],
+  imports: [PrismaModule, AuthModule, SettingsModule, SupabaseModule, SignupModule, MeModule, PostsModule, ActivitiesModule],
   controllers: [HealthController],
 })
 export class AppModule {}
