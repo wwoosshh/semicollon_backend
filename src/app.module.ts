@@ -11,9 +11,11 @@ import { ActivitiesModule } from './activities/activities.module';
 import { ApplicationsModule } from './applications/applications.module';
 import { AdminModule } from './admin/admin.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { EventsModule } from './events/events.module';
+import { CommentsModule } from './comments/comments.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, SettingsModule, SupabaseModule, SignupModule, MeModule, PostsModule, ActivitiesModule, ApplicationsModule, AdminModule, UploadsModule],
+  imports: [PrismaModule, AuthModule, SettingsModule, SupabaseModule, SignupModule, MeModule, PostsModule, ActivitiesModule, ApplicationsModule, AdminModule, UploadsModule, EventsModule, CommentsModule],
   controllers: [HealthController],
 })
 export class AppModule {}

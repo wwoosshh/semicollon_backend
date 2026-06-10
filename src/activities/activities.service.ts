@@ -29,6 +29,7 @@ export class ActivitiesService {
         year: dto.year,
         thumbnail_url: dto.thumbnailUrl ?? null,
         tags: dto.tags ?? [],
+        image_urls: dto.imageUrls ?? [],
       },
     });
   }
@@ -44,6 +45,7 @@ export class ActivitiesService {
         ...(dto.year !== undefined ? { year: dto.year } : {}),
         ...(dto.thumbnailUrl !== undefined ? { thumbnail_url: dto.thumbnailUrl } : {}),
         ...(dto.tags !== undefined ? { tags: dto.tags } : {}),
+        ...(dto.imageUrls !== undefined ? { image_urls: dto.imageUrls } : {}),
       },
     });
   }
