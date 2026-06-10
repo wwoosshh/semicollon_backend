@@ -9,6 +9,26 @@
 - `npx jest` — 테스트
 - 스키마가 바뀌면(db 저장소에 마이그레이션 추가 시): `npx prisma db pull` 후 `npx prisma generate`
 
+## API
+
+| 메서드/경로 | 권한 | 설명 |
+|---|---|---|
+| GET /health | 공개 | 헬스체크 |
+| GET /settings/recruit | 공개 | 모집 기간·모집 중 여부 |
+| POST /auth/signup | 공개 | 초대 코드 가입 |
+| GET /me | 부원 | 내 프로필 |
+| GET /posts, GET /posts/:id | 공개(부원은 member 글 포함) | 게시판 목록/상세 |
+| POST /posts | 부원(공지는 admin) | 글 작성 |
+| PATCH·DELETE /posts/:id | 작성자 또는 admin | 글 수정/삭제 |
+| GET /activities, /activities/:id | 공개 | 활동 목록/상세 |
+| POST·PATCH·DELETE /activities | admin | 활동 관리 |
+| POST /applications | 공개(모집 기간 내) | 지원서 제출 |
+| GET /admin/applications | admin | 지원자 목록 |
+| PATCH /admin/applications/:id/status | admin | 지원 상태 변경 |
+| PATCH /admin/settings/recruit | admin | 모집 기간 설정 |
+| PATCH /admin/settings/invite-code | admin | 초대 코드 변경 |
+| POST /uploads | 부원 | 이미지 업로드 (5MB, 이미지만) |
+
 ## 인증 구조
 
 - 프론트가 Supabase Auth로 로그인 → JWT를 `Authorization: Bearer`로 전달
