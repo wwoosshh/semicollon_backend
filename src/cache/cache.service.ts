@@ -12,7 +12,9 @@ export class CacheService implements OnModuleDestroy {
       this.client = new Redis(url, {
         maxRetriesPerRequest: 1,
         enableOfflineQueue: false,
-        retryStrategy: (times) => Math.min(times * 1000, 15000),
+        // 영구 다운 시 무한 재연결을 막는다 — null 반환 시 ioredis가 재시도를 중단
+        retryStrategy: (times) =>
+          times > 20 ? null : Math.min(times * 1000, 15000),
       });
       this.client.on('error', (e) => this.logger.warn(`redis: ${e.message}`));
     }

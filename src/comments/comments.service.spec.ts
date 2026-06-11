@@ -25,14 +25,13 @@ function makePrisma(overrides: any = {}) {
   } as any;
 }
 
-// Stub PostsService so CommentsService can call getOne
-function makePostsService(postResult?: any, throws?: any) {
+// Stub PostsService — 접근 확인은 content 전체를 읽는 getOne이 아니라
+// visibility만 읽는 assertVisible로 수행한다
+function makePostsService(_postResult?: any, throws?: any) {
   return {
-    getOne: throws
+    assertVisible: throws
       ? jest.fn().mockRejectedValue(throws)
-      : jest.fn().mockResolvedValue(
-          postResult ?? { id: 1n, visibility: 'public' },
-        ),
+      : jest.fn().mockResolvedValue(undefined),
   } as any;
 }
 
@@ -50,7 +49,11 @@ describe('CommentsService', () => {
       null,
       new NotFoundException('게시글을 찾을 수 없습니다.'),
     );
-    const svc = new CommentsService(prisma, postsService, mockProfileCache(null));
+    const svc = new CommentsService(
+      prisma,
+      postsService,
+      mockProfileCache(null),
+    );
     await expect(svc.listForPost(1, undefined)).rejects.toThrow(
       NotFoundException,
     );
@@ -78,7 +81,11 @@ describe('CommentsService', () => {
       },
     });
     const postsService = makePostsService({ id: 1n, visibility: 'public' });
-    const svc = new CommentsService(prisma, postsService, mockProfileCache('member'));
+    const svc = new CommentsService(
+      prisma,
+      postsService,
+      mockProfileCache('member'),
+    );
     const result = await svc.listForPost(1, undefined);
     expect(result[0].author).toEqual({ id: 'u1', name: '홍길동' });
     expect(result[1].author).toBeNull();
@@ -87,7 +94,11 @@ describe('CommentsService', () => {
   it('creates a comment for a member on a valid post', async () => {
     const prisma = makePrisma();
     const postsService = makePostsService({ id: 1n, visibility: 'public' });
-    const svc = new CommentsService(prisma, postsService, mockProfileCache('member'));
+    const svc = new CommentsService(
+      prisma,
+      postsService,
+      mockProfileCache('member'),
+    );
     await svc.create(1, 'u1', { content: 'Hello!' });
     expect(prisma.comments.create).toHaveBeenCalled();
   });
@@ -97,7 +108,11 @@ describe('CommentsService', () => {
       profiles: { findUnique: jest.fn().mockResolvedValue(null) },
     });
     const postsService = makePostsService({ id: 1n, visibility: 'public' });
-    const svc = new CommentsService(prisma, postsService, mockProfileCache(null));
+    const svc = new CommentsService(
+      prisma,
+      postsService,
+      mockProfileCache(null),
+    );
     await expect(svc.create(1, 'ghost', { content: 'Hi' })).rejects.toThrow(
       ForbiddenException,
     );
@@ -116,7 +131,11 @@ describe('CommentsService', () => {
       },
     });
     const postsService = makePostsService();
-    const svc = new CommentsService(prisma, postsService, mockProfileCache('member'));
+    const svc = new CommentsService(
+      prisma,
+      postsService,
+      mockProfileCache('member'),
+    );
     await svc.remove(1, 'u1');
     expect(prisma.comments.delete).toHaveBeenCalled();
   });
@@ -134,7 +153,11 @@ describe('CommentsService', () => {
       },
     });
     const postsService = makePostsService();
-    const svc = new CommentsService(prisma, postsService, mockProfileCache('member'));
+    const svc = new CommentsService(
+      prisma,
+      postsService,
+      mockProfileCache('member'),
+    );
     await expect(svc.remove(1, 'u1')).rejects.toThrow(ForbiddenException);
   });
 });

@@ -47,10 +47,7 @@ export class CommentsDeleteController {
 
   @Delete(':id')
   @UseGuards(AuthGuard)
-  remove(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req: AuthedRequest,
-  ) {
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req: AuthedRequest) {
     return this.comments.remove(id, req.user.id);
   }
 }

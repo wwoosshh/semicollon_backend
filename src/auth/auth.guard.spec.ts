@@ -20,8 +20,10 @@ describe('AuthGuard', () => {
   });
 
   it('sets req.user.id from a valid token', async () => {
-    const verifier = { verify: jest.fn().mockResolvedValue({ sub: 'user-uuid' }) };
-    const guard = new AuthGuard(verifier as unknown as JwtVerifier);
+    const verifier = {
+      verify: jest.fn().mockResolvedValue({ sub: 'user-uuid' }),
+    };
+    const guard = new AuthGuard(verifier);
     const { ctx, req } = mockContext('Bearer some-valid-token');
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
     expect(req.user).toEqual({ id: 'user-uuid' });
@@ -29,7 +31,7 @@ describe('AuthGuard', () => {
 
   it('rejects when verification fails', async () => {
     const verifier = { verify: jest.fn().mockRejectedValue(new Error('bad')) };
-    const guard = new AuthGuard(verifier as unknown as JwtVerifier);
+    const guard = new AuthGuard(verifier);
     const { ctx } = mockContext('Bearer tampered');
     await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
   });

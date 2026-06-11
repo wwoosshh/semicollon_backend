@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ApplicationsService } from './applications.service';
 
 describe('ApplicationsService', () => {
@@ -16,7 +16,11 @@ describe('ApplicationsService', () => {
     return { svc: new ApplicationsService(settings, prisma), prisma };
   }
 
-  const dto = { name: '지원자', contact: '010-0000-0000', answers: { q1: 'a' } };
+  const dto = {
+    name: '지원자',
+    contact: '010-0000-0000',
+    answers: { q1: 'a' },
+  };
 
   it('rejects submission outside the recruit period', async () => {
     const { svc } = makeService(false);
@@ -25,7 +29,7 @@ describe('ApplicationsService', () => {
 
   it('accepts submission during the recruit period', async () => {
     const { svc, prisma } = makeService(true);
-    await svc.submit(dto as any);
+    await svc.submit(dto);
     expect(prisma.applications.create).toHaveBeenCalledWith({
       data: { name: '지원자', contact: '010-0000-0000', answers: { q1: 'a' } },
     });
@@ -38,5 +42,15 @@ describe('ApplicationsService', () => {
       where: { id: 1 },
       data: { status: 'accepted' },
     });
+  });
+
+  it('maps P2025 to NotFoundException when updating a missing application', async () => {
+    const { svc, prisma } = makeService(true);
+    prisma.applications.update.mockRejectedValue(
+      Object.assign(new Error('Record not found'), { code: 'P2025' }),
+    );
+    await expect(svc.updateStatus(999, 'accepted')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 });

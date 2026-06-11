@@ -543,6 +543,7 @@ model posts {
   profiles   profiles?  @relation(fields: [author_id], references: [id], onUpdate: NoAction)
 
   @@index([category, created_at(sort: Desc)], map: "posts_category_created_idx")
+  @@index([visibility, created_at(sort: Desc)], map: "posts_visibility_created_idx")
   @@schema("public")
 }
 
@@ -558,6 +559,7 @@ model profiles {
   posts      posts[]
   users      users      @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@index([generation, name], map: "profiles_generation_name_idx")
   @@schema("public")
 }
 

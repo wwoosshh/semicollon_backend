@@ -1,5 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { isRecordNotFoundError } from '../prisma/prisma-errors';
 import { SettingsService } from '../settings/settings.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 
@@ -27,10 +32,17 @@ export class ApplicationsService {
     });
   }
 
-  updateStatus(id: number, status: 'pending' | 'accepted' | 'rejected') {
-    return this.prisma.applications.update({
-      where: { id },
-      data: { status },
-    });
+  async updateStatus(id: number, status: 'pending' | 'accepted' | 'rejected') {
+    try {
+      return await this.prisma.applications.update({
+        where: { id },
+        data: { status },
+      });
+    } catch (e) {
+      if (isRecordNotFoundError(e)) {
+        throw new NotFoundException('지원서를 찾을 수 없습니다.');
+      }
+      throw e;
+    }
   }
 }

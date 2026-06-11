@@ -24,12 +24,16 @@ describe('RolesGuard', () => {
 
   it('allows when no roles are required', async () => {
     const guard = makeGuard(undefined);
-    await expect(guard.canActivate(mockContext({ id: 'u1' }))).resolves.toBe(true);
+    await expect(guard.canActivate(mockContext({ id: 'u1' }))).resolves.toBe(
+      true,
+    );
   });
 
   it('allows admin when admin is required', async () => {
     const guard = makeGuard(['admin'], 'admin');
-    await expect(guard.canActivate(mockContext({ id: 'u1' }))).resolves.toBe(true);
+    await expect(guard.canActivate(mockContext({ id: 'u1' }))).resolves.toBe(
+      true,
+    );
   });
 
   it('rejects member when admin is required', async () => {

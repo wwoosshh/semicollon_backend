@@ -45,13 +45,14 @@ export class EventsService {
   }
 
   async update(id: number, dto: UpdateEventDto) {
-    await this.getOne(id);
-    if (dto.endsAt && dto.startsAt) {
-      if (new Date(dto.endsAt) < new Date(dto.startsAt)) {
-        throw new BadRequestException(
-          '종료 시간은 시작 시간보다 늦어야 합니다.',
-        );
-      }
+    const existing = await this.getOne(id);
+    // 한쪽만 PATCH해도 역전이 생기지 않도록 기존 값과 병합한 최종 시각으로 비교
+    const finalStartsAt =
+      dto.startsAt !== undefined ? new Date(dto.startsAt) : existing.starts_at;
+    const finalEndsAt =
+      dto.endsAt !== undefined ? new Date(dto.endsAt) : existing.ends_at;
+    if (finalEndsAt && finalEndsAt < finalStartsAt) {
+      throw new BadRequestException('종료 시간은 시작 시간보다 늦어야 합니다.');
     }
     return this.prisma.events.update({
       where: { id },

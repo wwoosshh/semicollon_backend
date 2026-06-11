@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { isRecordNotFoundError } from '../prisma/prisma-errors';
 import { CacheService } from '../cache/cache.service';
 import { ProfileCacheService } from '../cache/profile-cache.service';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -18,7 +19,15 @@ const LIST_SELECT = {
   profiles: { select: { name: true } },
 } as const;
 
-const PUBLIC_CACHE_KEYS = ['posts:public:all', 'posts:public:notice', 'posts:public:blog'];
+const PUBLIC_CACHE_KEYS = [
+  'posts:public:all',
+  'posts:public:notice',
+  'posts:public:blog',
+];
+
+// 무효화 목록(PUBLIC_CACHE_KEYS)에 있는 키만 캐시한다 — 임의 쿼리값으로 키가 무한 생성되고
+// 쓰기 시 무효화되지 않은 채 TTL까지 stale로 남는 것을 방지
+const CACHEABLE_CATEGORIES = new Set(['notice', 'blog']);
 
 @Injectable()
 export class PostsService {
@@ -40,14 +49,21 @@ export class PostsService {
     return role !== null;
   }
 
-  async list(userId: string | undefined, category: string | undefined) {
-    const member = await this.isMember(userId);
-
+  async list(
+    userId: string | undefined,
+    category: string | undefined,
+    limit?: number,
+  ) {
     // Cache only for anonymous (public) requests
     if (!userId) {
+      // limit이 들어간 결과를 전체 목록 키에 캐시하면 안 되므로 limit 요청은 캐시 제외
+      const cacheable =
+        !limit && (!category || CACHEABLE_CATEGORIES.has(category));
       const cacheKey = `posts:public:${category ?? 'all'}`;
-      const cached = await this.cache.get<any[]>(cacheKey);
-      if (cached !== null) return cached;
+      if (cacheable) {
+        const cached = await this.cache.get<any[]>(cacheKey);
+        if (cached !== null) return cached;
+      }
 
       const result = await this.prisma.posts.findMany({
         where: {
@@ -56,11 +72,15 @@ export class PostsService {
         },
         orderBy: { created_at: 'desc' },
         select: LIST_SELECT,
+        ...(limit ? { take: limit } : {}),
       });
-      await this.cache.set(cacheKey, result, 30);
+      if (cacheable) {
+        await this.cache.set(cacheKey, result, 30);
+      }
       return result;
     }
 
+    const member = await this.isMember(userId);
     return this.prisma.posts.findMany({
       where: {
         ...(member ? {} : { visibility: 'public' }),
@@ -68,7 +88,22 @@ export class PostsService {
       },
       orderBy: { created_at: 'desc' },
       select: LIST_SELECT,
+      ...(limit ? { take: limit } : {}),
     });
+  }
+
+  // 댓글 등 접근 확인만 필요한 곳을 위해 content 전체가 아니라 visibility만 읽는다
+  async assertVisible(id: number, userId: string | undefined): Promise<void> {
+    const post = await this.prisma.posts.findUnique({
+      where: { id },
+      select: { visibility: true },
+    });
+    if (
+      !post ||
+      (post.visibility === 'member' && !(await this.isMember(userId)))
+    ) {
+      throw new NotFoundException('게시글을 찾을 수 없습니다.');
+    }
   }
 
   async getOne(id: number, userId: string | undefined) {
@@ -113,24 +148,44 @@ export class PostsService {
 
   async update(id: number, userId: string, dto: UpdatePostDto) {
     await this.assertCanEdit(id, userId);
-    const result = await this.prisma.posts.update({
-      where: { id },
-      data: {
-        ...(dto.title !== undefined ? { title: dto.title } : {}),
-        ...(dto.content !== undefined ? { content: dto.content } : {}),
-        ...(dto.category !== undefined ? { category: dto.category } : {}),
-        ...(dto.visibility !== undefined ? { visibility: dto.visibility } : {}),
-        ...(dto.imageUrls !== undefined ? { image_urls: dto.imageUrls } : {}),
-      },
-    });
-    await this.cache.del(...PUBLIC_CACHE_KEYS);
-    return result;
+    // create()와 동일한 경계 — 일반 부원이 PATCH로 자기 글을 공지로 승격하는 것 차단
+    if (dto.category === 'notice' && !(await this.isAdmin(userId))) {
+      throw new ForbiddenException('공지는 운영진만 작성할 수 있습니다.');
+    }
+    try {
+      const result = await this.prisma.posts.update({
+        where: { id },
+        data: {
+          ...(dto.title !== undefined ? { title: dto.title } : {}),
+          ...(dto.content !== undefined ? { content: dto.content } : {}),
+          ...(dto.category !== undefined ? { category: dto.category } : {}),
+          ...(dto.visibility !== undefined
+            ? { visibility: dto.visibility }
+            : {}),
+          ...(dto.imageUrls !== undefined ? { image_urls: dto.imageUrls } : {}),
+        },
+      });
+      await this.cache.del(...PUBLIC_CACHE_KEYS);
+      return result;
+    } catch (e) {
+      if (isRecordNotFoundError(e)) {
+        throw new NotFoundException('게시글을 찾을 수 없습니다.');
+      }
+      throw e;
+    }
   }
 
   async remove(id: number, userId: string) {
     await this.assertCanEdit(id, userId);
-    const result = await this.prisma.posts.delete({ where: { id } });
-    await this.cache.del(...PUBLIC_CACHE_KEYS);
-    return result;
+    try {
+      const result = await this.prisma.posts.delete({ where: { id } });
+      await this.cache.del(...PUBLIC_CACHE_KEYS);
+      return result;
+    } catch (e) {
+      if (isRecordNotFoundError(e)) {
+        throw new NotFoundException('게시글을 찾을 수 없습니다.');
+      }
+      throw e;
+    }
   }
 }

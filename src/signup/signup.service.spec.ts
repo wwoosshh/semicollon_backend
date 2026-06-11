@@ -15,8 +15,13 @@ describe('SignupService', () => {
     createUserResult?: { data: any; error: any };
     profileCreateFails?: boolean;
   }) {
+    // 초대 코드 검증은 해시 비교를 캡슐화한 settings.verifyInviteCode에 위임한다
     const settings = {
-      getInviteCode: jest.fn().mockResolvedValue(opts.storedCode ?? null),
+      verifyInviteCode: jest
+        .fn()
+        .mockImplementation((code: string) =>
+          Promise.resolve(opts.storedCode !== null && code === opts.storedCode),
+        ),
     } as any;
     const supabase = {
       createUser: jest.fn().mockResolvedValue(
@@ -34,7 +39,11 @@ describe('SignupService', () => {
           : jest.fn().mockResolvedValue({}),
       },
     } as any;
-    return { svc: new SignupService(settings, supabase, prisma), supabase, prisma };
+    return {
+      svc: new SignupService(settings, supabase, prisma),
+      supabase,
+      prisma,
+    };
   }
 
   it('rejects a wrong invite code', async () => {

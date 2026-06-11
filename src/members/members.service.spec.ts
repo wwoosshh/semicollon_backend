@@ -17,6 +17,7 @@ function makeService(
       findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn().mockResolvedValue(null),
       update: jest.fn().mockResolvedValue({}),
+      count: jest.fn().mockResolvedValue(2),
     },
     ...prismaOverrides,
   } as any;
@@ -28,7 +29,12 @@ function makeService(
 
   const profileCache = mockProfileCache();
 
-  return { svc: new MembersService(prisma, supabase, profileCache), prisma, supabase, profileCache };
+  return {
+    svc: new MembersService(prisma, supabase, profileCache),
+    prisma,
+    supabase,
+    profileCache,
+  };
 }
 
 describe('MembersService', () => {
@@ -62,8 +68,9 @@ describe('MembersService', () => {
 
     const result = await svc.list();
 
+    // auth.users 전체(암호 해시 포함)가 아니라 email만 읽어야 한다
     expect(prisma.profiles.findMany).toHaveBeenCalledWith({
-      include: { users: true },
+      include: { users: { select: { email: true } } },
       orderBy: [{ generation: 'asc' }, { name: 'asc' }],
     });
     expect(result).toHaveLength(2);
@@ -102,7 +109,11 @@ describe('MembersService', () => {
       },
     });
 
-    const result = await svc.updateRole('requester-uuid', 'target-uuid', 'admin');
+    const result = await svc.updateRole(
+      'requester-uuid',
+      'target-uuid',
+      'admin',
+    );
 
     expect(prisma.profiles.findUnique).toHaveBeenCalledWith({
       where: { id: 'target-uuid' },
@@ -131,9 +142,9 @@ describe('MembersService', () => {
 
   it('deleteMember throws BadRequestException when requester tries to delete themselves', async () => {
     const { svc } = makeService();
-    await expect(
-      svc.deleteMember('same-uuid', 'same-uuid'),
-    ).rejects.toThrow(BadRequestException);
+    await expect(svc.deleteMember('same-uuid', 'same-uuid')).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('deleteMember calls supabase.deleteUser for a different member', async () => {
@@ -141,6 +152,108 @@ describe('MembersService', () => {
     await svc.deleteMember('requester-uuid', 'target-uuid');
     expect(supabase.deleteUser).toHaveBeenCalledWith('target-uuid');
     expect(profileCache.invalidate).toHaveBeenCalledWith('target-uuid');
+  });
+
+  it('updateRole throws BadRequestException when demoting the last admin', async () => {
+    const { svc, prisma } = makeService({
+      profiles: {
+        findMany: jest.fn(),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'target-uuid', role: 'admin' }),
+        update: jest.fn(),
+        count: jest.fn().mockResolvedValue(1),
+      },
+    });
+
+    await expect(
+      svc.updateRole('requester-uuid', 'target-uuid', 'member'),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.profiles.update).not.toHaveBeenCalled();
+  });
+
+  it('updateRole allows demoting an admin when another admin remains', async () => {
+    const { svc, prisma } = makeService({
+      profiles: {
+        findMany: jest.fn(),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'target-uuid', role: 'admin' }),
+        update: jest
+          .fn()
+          .mockResolvedValue({ id: 'target-uuid', role: 'member' }),
+        count: jest.fn().mockResolvedValue(2),
+      },
+    });
+
+    const result = await svc.updateRole(
+      'requester-uuid',
+      'target-uuid',
+      'member',
+    );
+    expect(result.role).toBe('member');
+  });
+
+  it('deleteMember throws BadRequestException when deleting the last admin', async () => {
+    const { svc, supabase } = makeService({
+      profiles: {
+        findMany: jest.fn(),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'target-uuid', role: 'admin' }),
+        update: jest.fn(),
+        count: jest.fn().mockResolvedValue(1),
+      },
+    });
+
+    await expect(
+      svc.deleteMember('requester-uuid', 'target-uuid'),
+    ).rejects.toThrow(BadRequestException);
+    expect(supabase.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('updateRole invalidates the role cache before and after the update', async () => {
+    const { svc, prisma, profileCache } = makeService({
+      profiles: {
+        findMany: jest.fn(),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'target-uuid', role: 'member' }),
+        update: jest
+          .fn()
+          .mockResolvedValue({ id: 'target-uuid', role: 'admin' }),
+        count: jest.fn().mockResolvedValue(2),
+      },
+    });
+
+    await svc.updateRole('requester-uuid', 'target-uuid', 'admin');
+
+    // 업데이트 직전·직후 모두 무효화 — 그 사이 이전 역할이 재캐싱되는 창 제거
+    expect(profileCache.invalidate).toHaveBeenCalledTimes(2);
+    const firstInvalidate = profileCache.invalidate.mock.invocationCallOrder[0];
+    const updateCall = prisma.profiles.update.mock.invocationCallOrder[0];
+    expect(firstInvalidate).toBeLessThan(updateCall);
+  });
+
+  it('updateRole maps P2025 to NotFoundException when target vanishes mid-update', async () => {
+    const { svc } = makeService({
+      profiles: {
+        findMany: jest.fn(),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'target-uuid', role: 'member' }),
+        update: jest
+          .fn()
+          .mockRejectedValue(
+            Object.assign(new Error('Record not found'), { code: 'P2025' }),
+          ),
+        count: jest.fn().mockResolvedValue(2),
+      },
+    });
+
+    await expect(
+      svc.updateRole('requester-uuid', 'target-uuid', 'admin'),
+    ).rejects.toThrow(NotFoundException);
   });
 
   it('deleteMember throws BadRequestException when supabase returns an error', async () => {

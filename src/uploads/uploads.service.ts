@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { SupabaseAdminService } from '../supabase/supabase-admin.service';
 
@@ -13,6 +13,8 @@ const MAX_SIZE = 5 * 1024 * 1024;
 
 @Injectable()
 export class UploadsService {
+  private readonly logger = new Logger(UploadsService.name);
+
   constructor(private readonly supabase: SupabaseAdminService) {}
 
   async upload(file: Express.Multer.File): Promise<{ url: string }> {
@@ -30,7 +32,11 @@ export class UploadsService {
       file.mimetype,
     );
     if (error) {
-      throw new BadRequestException('업로드에 실패했습니다. 다시 시도해 주세요.');
+      // 사용자에겐 일반 메시지를 주되, 운영 진단을 위해 원인은 로그로 남긴다
+      this.logger.error(`스토리지 업로드 실패: ${error.message}`);
+      throw new BadRequestException(
+        '업로드에 실패했습니다. 다시 시도해 주세요.',
+      );
     }
     return { url: this.supabase.publicImageUrl(path) };
   }

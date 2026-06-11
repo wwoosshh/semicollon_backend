@@ -16,14 +16,15 @@ import { RolesGuard } from '../auth/roles.guard';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { QueryEventsDto } from './dto/query-events.dto';
 
 @Controller('events')
 export class EventsController {
   constructor(private readonly events: EventsService) {}
 
   @Get()
-  list(@Query('from') from?: string, @Query('to') to?: string) {
-    return this.events.list(from, to);
+  list(@Query() query: QueryEventsDto) {
+    return this.events.list(query.from, query.to);
   }
 
   @Post()
@@ -36,10 +37,7 @@ export class EventsController {
   @Patch(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('admin')
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateEventDto,
-  ) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateEventDto) {
     return this.events.update(id, dto);
   }
 

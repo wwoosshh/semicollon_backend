@@ -16,6 +16,7 @@ import { OptionalAuthGuard } from '../auth/optional-auth.guard';
 import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
+import { QueryPostsDto } from './dto/query-posts.dto';
 
 type AuthedRequest = { user: { id: string } };
 type MaybeAuthedRequest = { user?: { id: string } };
@@ -26,13 +27,16 @@ export class PostsController {
 
   @Get()
   @UseGuards(OptionalAuthGuard)
-  list(@Req() req: MaybeAuthedRequest, @Query('category') category?: string) {
-    return this.posts.list(req.user?.id, category);
+  list(@Req() req: MaybeAuthedRequest, @Query() query: QueryPostsDto) {
+    return this.posts.list(req.user?.id, query.category, query.limit);
   }
 
   @Get(':id')
   @UseGuards(OptionalAuthGuard)
-  getOne(@Param('id', ParseIntPipe) id: number, @Req() req: MaybeAuthedRequest) {
+  getOne(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: MaybeAuthedRequest,
+  ) {
     return this.posts.getOne(id, req.user?.id);
   }
 

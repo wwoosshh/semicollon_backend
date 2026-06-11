@@ -38,7 +38,7 @@ describe('EventsService', () => {
     await svc.create({
       title: 'Test Event',
       startsAt: '2026-03-01T10:00:00.000Z',
-    } as any);
+    });
     expect(prisma.events.create).toHaveBeenCalled();
   });
 
@@ -58,5 +58,47 @@ describe('EventsService', () => {
     await expect(svc.update(999, { title: 'x' } as any)).rejects.toThrow(
       NotFoundException,
     );
+  });
+
+  it('rejects an endsAt-only update that precedes the existing starts_at', async () => {
+    const prisma = makePrisma({
+      findUnique: jest.fn().mockResolvedValue({
+        id: 1,
+        starts_at: new Date('2026-03-10T10:00:00.000Z'),
+        ends_at: null,
+      }),
+    });
+    const svc = new EventsService(prisma);
+    await expect(
+      svc.update(1, { endsAt: '2026-03-01T10:00:00.000Z' } as any),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.events.update).not.toHaveBeenCalled();
+  });
+
+  it('allows an endsAt-only update that follows the existing starts_at', async () => {
+    const prisma = makePrisma({
+      findUnique: jest.fn().mockResolvedValue({
+        id: 1,
+        starts_at: new Date('2026-03-10T10:00:00.000Z'),
+        ends_at: null,
+      }),
+    });
+    const svc = new EventsService(prisma);
+    await svc.update(1, { endsAt: '2026-03-11T10:00:00.000Z' });
+    expect(prisma.events.update).toHaveBeenCalled();
+  });
+
+  it('rejects a startsAt-only update that passes the existing ends_at', async () => {
+    const prisma = makePrisma({
+      findUnique: jest.fn().mockResolvedValue({
+        id: 1,
+        starts_at: new Date('2026-03-10T10:00:00.000Z'),
+        ends_at: new Date('2026-03-12T10:00:00.000Z'),
+      }),
+    });
+    const svc = new EventsService(prisma);
+    await expect(
+      svc.update(1, { startsAt: '2026-03-15T10:00:00.000Z' } as any),
+    ).rejects.toThrow(BadRequestException);
   });
 });

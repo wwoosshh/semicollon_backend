@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { CacheModule } from './cache/cache.module';
 import { HealthController } from './health/health.controller';
@@ -16,7 +18,25 @@ import { EventsModule } from './events/events.module';
 import { CommentsModule } from './comments/comments.module';
 
 @Module({
-  imports: [PrismaModule, CacheModule, AuthModule, SettingsModule, SupabaseModule, SignupModule, MeModule, PostsModule, ActivitiesModule, ApplicationsModule, AdminModule, UploadsModule, EventsModule, CommentsModule],
+  imports: [
+    // 전역 기본 rate limit — 공개 엔드포인트 스팸으로 테이블/커넥션 풀이 포화되는 것 방지
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    PrismaModule,
+    CacheModule,
+    AuthModule,
+    SettingsModule,
+    SupabaseModule,
+    SignupModule,
+    MeModule,
+    PostsModule,
+    ActivitiesModule,
+    ApplicationsModule,
+    AdminModule,
+    UploadsModule,
+    EventsModule,
+    CommentsModule,
+  ],
   controllers: [HealthController],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

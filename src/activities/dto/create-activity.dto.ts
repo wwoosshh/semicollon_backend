@@ -4,6 +4,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Max,
   Min,
   MinLength,
 } from 'class-validator';
@@ -22,6 +23,7 @@ export class CreateActivityDto {
 
   @IsInt()
   @Min(2000)
+  @Max(2100)
   year: number;
 
   @IsOptional()

@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 import { UploadsService } from './uploads.service';
 
 describe('UploadsService', () => {
@@ -41,5 +41,16 @@ describe('UploadsService', () => {
   it('surfaces storage errors', async () => {
     const { svc } = makeService({ message: 'boom' });
     await expect(svc.upload(file)).rejects.toThrow(BadRequestException);
+  });
+
+  it('logs the underlying storage error for diagnostics', async () => {
+    const errSpy = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => {});
+    const { svc } = makeService({ message: 'boom' });
+
+    await expect(svc.upload(file)).rejects.toThrow(BadRequestException);
+    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('boom'));
+    errSpy.mockRestore();
   });
 });

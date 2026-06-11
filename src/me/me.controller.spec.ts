@@ -14,12 +14,14 @@ describe('MeController', () => {
       },
     } as any;
     const controller = new MeController(prisma);
-    await expect(controller.me({ user: { id: 'u1' } } as any)).resolves.toEqual({
-      id: 'u1',
-      name: '홍길동',
-      generation: 3,
-      role: 'member',
-    });
+    await expect(controller.me({ user: { id: 'u1' } } as any)).resolves.toEqual(
+      {
+        id: 'u1',
+        name: '홍길동',
+        generation: 3,
+        role: 'member',
+      },
+    );
   });
 
   it('404s when profile is missing', async () => {
@@ -27,8 +29,8 @@ describe('MeController', () => {
       profiles: { findUnique: jest.fn().mockResolvedValue(null) },
     } as any;
     const controller = new MeController(prisma);
-    await expect(controller.me({ user: { id: 'ghost' } } as any)).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(
+      controller.me({ user: { id: 'ghost' } } as any),
+    ).rejects.toThrow(NotFoundException);
   });
 });

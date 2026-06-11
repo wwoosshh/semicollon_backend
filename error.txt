@@ -1,0 +1,9 @@
+.
+433ms
+
+stage-0
+RUN npx prisma generate && npm run build
+1s
+npm warn config production Use `--omit=dev` instead.
+Failed to load config file "/app" as a TypeScript/JavaScript module. Error: PrismaConfigEnvError: Cannot resolve environment variable: DATABASE_URL.
+Build Failed: build daemon returned an error < failed to solve: process "/bin/bash -ol pipefail -c npx prisma generate && npm run build" did not complete successfully: exit code: 1 >

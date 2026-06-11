@@ -62,12 +62,28 @@ describe('ActivitiesService', () => {
     expect(prisma.activities.findMany).not.toHaveBeenCalled();
   });
 
+  it('skips the cache for a non-whitelisted type', async () => {
+    const prisma = makePrisma();
+    const cache = mockCache();
+    const svc = new ActivitiesService(prisma, cache);
+
+    await svc.list('zzz');
+    expect(cache.get).not.toHaveBeenCalled();
+    expect(cache.set).not.toHaveBeenCalled();
+    expect(prisma.activities.findMany).toHaveBeenCalled();
+  });
+
   it('invalidates all activity cache keys after create', async () => {
     const prisma = makePrisma();
     const cache = mockCache();
     const svc = new ActivitiesService(prisma, cache);
 
-    await svc.create({ title: 't', description: 'd', type: 'study', year: 2026 } as any);
+    await svc.create({
+      title: 't',
+      description: 'd',
+      type: 'study',
+      year: 2026,
+    } as any);
     expect(cache.del).toHaveBeenCalledWith(
       'activities:all',
       'activities:project',

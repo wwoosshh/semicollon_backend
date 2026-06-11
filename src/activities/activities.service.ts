@@ -11,6 +11,10 @@ const ACTIVITY_CACHE_KEYS = [
   'activities:event',
 ];
 
+// 무효화 목록(ACTIVITY_CACHE_KEYS)에 있는 키만 캐시한다 — 임의 ?type= 값으로 키가 무한 생성되고
+// 쓰기 시 무효화되지 않은 채 TTL까지 stale로 남는 것을 방지
+const CACHEABLE_TYPES = new Set(['project', 'study', 'event']);
+
 @Injectable()
 export class ActivitiesService {
   constructor(
@@ -19,15 +23,20 @@ export class ActivitiesService {
   ) {}
 
   async list(type?: string) {
+    const cacheable = !type || CACHEABLE_TYPES.has(type);
     const cacheKey = `activities:${type ?? 'all'}`;
-    const cached = await this.cache.get<any[]>(cacheKey);
-    if (cached !== null) return cached;
+    if (cacheable) {
+      const cached = await this.cache.get<any[]>(cacheKey);
+      if (cached !== null) return cached;
+    }
 
     const result = await this.prisma.activities.findMany({
       where: type ? { type } : undefined,
       orderBy: [{ year: 'desc' }, { created_at: 'desc' }],
     });
-    await this.cache.set(cacheKey, result, 30);
+    if (cacheable) {
+      await this.cache.set(cacheKey, result, 30);
+    }
     return result;
   }
 
@@ -59,10 +68,14 @@ export class ActivitiesService {
       where: { id },
       data: {
         ...(dto.title !== undefined ? { title: dto.title } : {}),
-        ...(dto.description !== undefined ? { description: dto.description } : {}),
+        ...(dto.description !== undefined
+          ? { description: dto.description }
+          : {}),
         ...(dto.type !== undefined ? { type: dto.type } : {}),
         ...(dto.year !== undefined ? { year: dto.year } : {}),
-        ...(dto.thumbnailUrl !== undefined ? { thumbnail_url: dto.thumbnailUrl } : {}),
+        ...(dto.thumbnailUrl !== undefined
+          ? { thumbnail_url: dto.thumbnailUrl }
+          : {}),
         ...(dto.tags !== undefined ? { tags: dto.tags } : {}),
         ...(dto.imageUrls !== undefined ? { image_urls: dto.imageUrls } : {}),
       },

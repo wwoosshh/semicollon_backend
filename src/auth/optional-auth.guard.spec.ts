@@ -19,7 +19,7 @@ describe('OptionalAuthGuard', () => {
 
   it('sets req.user when a valid token is present', async () => {
     const verifier = { verify: jest.fn().mockResolvedValue({ sub: 'u1' }) };
-    const guard = new OptionalAuthGuard(verifier as unknown as JwtVerifier);
+    const guard = new OptionalAuthGuard(verifier);
     const { ctx, req } = mockContext('Bearer token');
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
     expect(req.user).toEqual({ id: 'u1' });
@@ -27,7 +27,7 @@ describe('OptionalAuthGuard', () => {
 
   it('passes (as anonymous) when token is invalid', async () => {
     const verifier = { verify: jest.fn().mockRejectedValue(new Error('bad')) };
-    const guard = new OptionalAuthGuard(verifier as unknown as JwtVerifier);
+    const guard = new OptionalAuthGuard(verifier);
     const { ctx, req } = mockContext('Bearer bad');
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
     expect(req.user).toBeUndefined();

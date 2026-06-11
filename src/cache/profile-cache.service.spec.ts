@@ -3,9 +3,9 @@ import { ProfileCacheService } from './profile-cache.service';
 function makePrisma(role?: string | null) {
   return {
     profiles: {
-      findUnique: jest.fn().mockResolvedValue(
-        role !== undefined ? { id: 'u1', role } : null,
-      ),
+      findUnique: jest
+        .fn()
+        .mockResolvedValue(role !== undefined ? { id: 'u1', role } : null),
     },
   } as any;
 }
@@ -53,7 +53,11 @@ describe('ProfileCacheService', () => {
 
     const role = await svc.getRole('ghost');
     expect(role).toBeNull();
-    expect(cache.set).toHaveBeenCalledWith('profile-role:ghost', '__null__', 15);
+    expect(cache.set).toHaveBeenCalledWith(
+      'profile-role:ghost',
+      '__null__',
+      15,
+    );
   });
 
   it('invalidate calls cache.del for the user key', async () => {

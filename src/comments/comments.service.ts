@@ -17,8 +17,8 @@ export class CommentsService {
   ) {}
 
   async listForPost(postId: number, userId: string | undefined) {
-    // validates access (member visibility check via PostsService)
-    await this.postsService.getOne(postId, userId);
+    // validates access (member visibility check) — content 전체를 읽는 getOne 대신 경량 확인
+    await this.postsService.assertVisible(postId, userId);
 
     const rows = await this.prisma.comments.findMany({
       where: { post_id: postId },
@@ -51,7 +51,7 @@ export class CommentsService {
     }
 
     // validate post access
-    await this.postsService.getOne(postId, userId);
+    await this.postsService.assertVisible(postId, userId);
 
     return this.prisma.comments.create({
       data: {
@@ -72,7 +72,9 @@ export class CommentsService {
     if (!isAuthor) {
       const role = await this.profileCache.getRole(userId);
       if (role !== 'admin') {
-        throw new ForbiddenException('본인이 작성한 댓글만 삭제할 수 있습니다.');
+        throw new ForbiddenException(
+          '본인이 작성한 댓글만 삭제할 수 있습니다.',
+        );
       }
     }
 

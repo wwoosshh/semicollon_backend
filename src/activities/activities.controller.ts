@@ -41,7 +41,10 @@ export class ActivitiesController {
   @Patch(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('admin')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateActivityDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateActivityDto,
+  ) {
     return this.activities.update(id, dto);
   }
 

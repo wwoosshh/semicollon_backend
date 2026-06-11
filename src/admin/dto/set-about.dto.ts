@@ -1,5 +1,11 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsOptional, IsString, MinLength, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsOptional,
+  IsString,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
 
 class HistoryItemDto {
   @IsString() @MinLength(1) year!: string;
@@ -18,7 +24,16 @@ class FaqItemDto {
 }
 
 export class SetAboutDto {
-  @IsArray() @ValidateNested({ each: true }) @Type(() => HistoryItemDto) history!: HistoryItemDto[];
-  @IsArray() @ValidateNested({ each: true }) @Type(() => StaffItemDto) staff!: StaffItemDto[];
-  @IsArray() @ValidateNested({ each: true }) @Type(() => FaqItemDto) faq!: FaqItemDto[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HistoryItemDto)
+  history!: HistoryItemDto[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => StaffItemDto)
+  staff!: StaffItemDto[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FaqItemDto)
+  faq!: FaqItemDto[];
 }

@@ -1,14 +1,8 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { timingSafeEqual } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { SupabaseAdminService } from '../supabase/supabase-admin.service';
 import { SignupDto } from './dto/signup.dto';
-
-function safeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
-}
 
 @Injectable()
 export class SignupService {
@@ -21,8 +15,7 @@ export class SignupService {
   ) {}
 
   async signup(dto: SignupDto): Promise<{ id: string }> {
-    const code = await this.settings.getInviteCode();
-    if (!code || !safeCompare(dto.inviteCode, code)) {
+    if (!(await this.settings.verifyInviteCode(dto.inviteCode))) {
       throw new BadRequestException('초대 코드가 올바르지 않습니다.');
     }
 
