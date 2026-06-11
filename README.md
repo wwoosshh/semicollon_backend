@@ -11,23 +11,56 @@
 
 ## API
 
-| 메서드/경로 | 권한 | 설명 |
+**공개**
+
+| 메서드/경로 | 설명 |
+|---|---|
+| GET /health | 헬스체크 |
+| GET /settings/recruit | 모집 기간·모집 중 여부 |
+| GET /settings/about | 소개 콘텐츠 (연혁/운영진/FAQ) |
+| POST /auth/signup | 초대 코드 가입 |
+| GET /posts, GET /posts/:id | 게시판 (토큰 있으면 member 글 포함) |
+| GET /posts/:id/comments | 댓글 목록 (글 공개범위 따름) |
+| GET /activities, /activities/:id | 활동 목록(?type=)/상세 |
+| GET /events | 일정 목록 (?from=&to= ISO 범위) |
+| POST /applications | 지원서 제출 (모집 기간 내만) |
+
+**부원 (Bearer)**
+
+| 메서드/경로 | 설명 |
+|---|---|
+| GET /me | 내 프로필 |
+| POST /posts | 글 작성 (공지 카테고리는 admin만) |
+| PATCH·DELETE /posts/:id | 글 수정/삭제 (작성자 또는 admin) |
+| POST /posts/:id/comments | 댓글 작성 |
+| DELETE /comments/:id | 댓글 삭제 (작성자 또는 admin) |
+| POST /uploads | 이미지 업로드 (multipart 'file', 5MB·이미지만) |
+
+**관리자 (Bearer + admin)**
+
+| 메서드/경로 | 설명 |
+|---|---|
+| GET /admin/applications | 지원자 목록 (?status=) |
+| PATCH /admin/applications/:id/status | 지원 상태 변경 |
+| GET /admin/members | 부원 목록 (이메일 포함) |
+| PATCH /admin/members/:id/role | 역할 변경 (자기 자신 불가) |
+| DELETE /admin/members/:id | 부원 삭제 — auth 계정까지 영구 삭제 (자기 자신 불가) |
+| PATCH /admin/settings/recruit | 모집 기간 설정 |
+| PATCH /admin/settings/invite-code | 초대 코드 변경 |
+| PATCH /admin/settings/about | 소개 콘텐츠(연혁/운영진/FAQ) 수정 |
+| POST·PATCH·DELETE /activities | 활동 등록/수정/삭제 |
+| POST·PATCH·DELETE /events | 일정 등록/수정/삭제 |
+
+## 캐싱 (Redis — 선택)
+
+`REDIS_URL` 설정 시 활성화되며, 없거나 장애여도 DB 폴백으로 정상 동작한다.
+
+| 키 | TTL | 무효화 |
 |---|---|---|
-| GET /health | 공개 | 헬스체크 |
-| GET /settings/recruit | 공개 | 모집 기간·모집 중 여부 |
-| POST /auth/signup | 공개 | 초대 코드 가입 |
-| GET /me | 부원 | 내 프로필 |
-| GET /posts, GET /posts/:id | 공개(부원은 member 글 포함) | 게시판 목록/상세 |
-| POST /posts | 부원(공지는 admin) | 글 작성 |
-| PATCH·DELETE /posts/:id | 작성자 또는 admin | 글 수정/삭제 |
-| GET /activities, /activities/:id | 공개 | 활동 목록/상세 |
-| POST·PATCH·DELETE /activities | admin | 활동 관리 |
-| POST /applications | 공개(모집 기간 내) | 지원서 제출 |
-| GET /admin/applications | admin | 지원자 목록 |
-| PATCH /admin/applications/:id/status | admin | 지원 상태 변경 |
-| PATCH /admin/settings/recruit | admin | 모집 기간 설정 |
-| PATCH /admin/settings/invite-code | admin | 초대 코드 변경 |
-| POST /uploads | 부원 | 이미지 업로드 (5MB, 이미지만) |
+| `setting:{key}` | 5분 | 관리자 설정 변경 시 |
+| `profile-role:{userId}` | 60초 (없음은 15초) | 역할 변경·부원 삭제 시 |
+| `posts:public:{category}` | 30초 | 글 작성/수정/삭제 시 |
+| `activities:{type}` | 30초 | 활동 변경 시 |
 
 ## 인증 구조
 
