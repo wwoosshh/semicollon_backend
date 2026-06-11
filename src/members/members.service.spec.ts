@@ -1,6 +1,13 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { MembersService } from './members.service';
 
+function mockProfileCache() {
+  return {
+    getRole: jest.fn().mockResolvedValue(null),
+    invalidate: jest.fn().mockResolvedValue(undefined),
+  } as any;
+}
+
 function makeService(
   prismaOverrides: Partial<any> = {},
   supabaseOverrides: Partial<any> = {},
@@ -19,7 +26,9 @@ function makeService(
     ...supabaseOverrides,
   } as any;
 
-  return { svc: new MembersService(prisma, supabase), prisma, supabase };
+  const profileCache = mockProfileCache();
+
+  return { svc: new MembersService(prisma, supabase, profileCache), prisma, supabase, profileCache };
 }
 
 describe('MembersService', () => {
@@ -85,7 +94,7 @@ describe('MembersService', () => {
       created_at: new Date(),
     };
 
-    const { svc, prisma } = makeService({
+    const { svc, prisma, profileCache } = makeService({
       profiles: {
         findMany: jest.fn(),
         findUnique: jest.fn().mockResolvedValue(mockProfile),
@@ -103,6 +112,7 @@ describe('MembersService', () => {
       data: { role: 'admin' },
     });
     expect(result.role).toBe('admin');
+    expect(profileCache.invalidate).toHaveBeenCalledWith('target-uuid');
   });
 
   it('updateRole throws NotFoundException when target profile does not exist', async () => {
@@ -127,9 +137,10 @@ describe('MembersService', () => {
   });
 
   it('deleteMember calls supabase.deleteUser for a different member', async () => {
-    const { svc, supabase } = makeService();
+    const { svc, supabase, profileCache } = makeService();
     await svc.deleteMember('requester-uuid', 'target-uuid');
     expect(supabase.deleteUser).toHaveBeenCalledWith('target-uuid');
+    expect(profileCache.invalidate).toHaveBeenCalledWith('target-uuid');
   });
 
   it('deleteMember throws BadRequestException when supabase returns an error', async () => {

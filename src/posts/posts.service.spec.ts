@@ -18,10 +18,25 @@ function makePrisma(overrides: any = {}) {
   } as any;
 }
 
+function mockCache() {
+  return {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(undefined),
+    del: jest.fn().mockResolvedValue(undefined),
+  } as any;
+}
+
+function mockProfileCache(role: 'admin' | 'member' | null = 'member') {
+  return {
+    getRole: jest.fn().mockResolvedValue(role),
+    invalidate: jest.fn().mockResolvedValue(undefined),
+  } as any;
+}
+
 describe('PostsService', () => {
   it('lists only public posts for anonymous users', async () => {
     const prisma = makePrisma();
-    const svc = new PostsService(prisma);
+    const svc = new PostsService(prisma, mockCache(), mockProfileCache(null));
     await svc.list(undefined, undefined);
     expect(prisma.posts.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -32,7 +47,7 @@ describe('PostsService', () => {
 
   it('lists public and member posts for members', async () => {
     const prisma = makePrisma();
-    const svc = new PostsService(prisma);
+    const svc = new PostsService(prisma, mockCache(), mockProfileCache('member'));
     await svc.list('u1', undefined);
     expect(prisma.posts.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -47,7 +62,7 @@ describe('PostsService', () => {
         findUnique: jest.fn().mockResolvedValue({ id: 1n, visibility: 'member' }),
       },
     });
-    const svc = new PostsService(prisma);
+    const svc = new PostsService(prisma, mockCache(), mockProfileCache(null));
     await expect(svc.getOne(1, undefined)).rejects.toThrow(NotFoundException);
   });
 
@@ -58,7 +73,7 @@ describe('PostsService', () => {
       },
       profiles: { findUnique: jest.fn().mockResolvedValue(null) },
     });
-    const svc = new PostsService(prisma);
+    const svc = new PostsService(prisma, mockCache(), mockProfileCache(null));
     await expect(svc.getOne(1, 'ghost-token-user')).rejects.toThrow(
       NotFoundException,
     );
@@ -66,7 +81,7 @@ describe('PostsService', () => {
 
   it('rejects notice creation by a non-admin', async () => {
     const prisma = makePrisma();
-    const svc = new PostsService(prisma);
+    const svc = new PostsService(prisma, mockCache(), mockProfileCache('member'));
     await expect(
       svc.create('u1', { title: 't', content: 'c', category: 'notice', visibility: 'public' } as any),
     ).rejects.toThrow(ForbiddenException);
@@ -74,7 +89,7 @@ describe('PostsService', () => {
 
   it('allows blog creation by a member', async () => {
     const prisma = makePrisma();
-    const svc = new PostsService(prisma);
+    const svc = new PostsService(prisma, mockCache(), mockProfileCache('member'));
     await svc.create('u1', { title: 't', content: 'c', category: 'blog', visibility: 'public' } as any);
     expect(prisma.posts.create).toHaveBeenCalled();
   });
@@ -85,7 +100,7 @@ describe('PostsService', () => {
         findUnique: jest.fn().mockResolvedValue({ id: 1n, author_id: 'other' }),
       },
     });
-    const svc = new PostsService(prisma);
+    const svc = new PostsService(prisma, mockCache(), mockProfileCache('member'));
     await expect(svc.update(1, 'u1', { title: 'x' } as any)).rejects.toThrow(
       ForbiddenException,
     );
@@ -98,8 +113,33 @@ describe('PostsService', () => {
       },
       profiles: { findUnique: jest.fn().mockResolvedValue({ role: 'admin' }) },
     });
-    const svc = new PostsService(prisma);
+    const svc = new PostsService(prisma, mockCache(), mockProfileCache('admin'));
     await svc.remove(1, 'admin-user');
     expect(prisma.posts.delete).toHaveBeenCalled();
+  });
+
+  it('returns cached public list without hitting prisma on cache hit', async () => {
+    const prisma = makePrisma();
+    const cache = mockCache();
+    const cachedPosts = [{ id: 1, title: 'cached post' }];
+    cache.get.mockResolvedValue(cachedPosts);
+    const svc = new PostsService(prisma, cache, mockProfileCache(null));
+
+    const result = await svc.list(undefined, undefined);
+    expect(result).toBe(cachedPosts);
+    expect(prisma.posts.findMany).not.toHaveBeenCalled();
+  });
+
+  it('invalidates public cache keys after create', async () => {
+    const prisma = makePrisma();
+    const cache = mockCache();
+    const svc = new PostsService(prisma, cache, mockProfileCache('member'));
+
+    await svc.create('u1', { title: 't', content: 'c', category: 'blog', visibility: 'public' } as any);
+    expect(cache.del).toHaveBeenCalledWith(
+      'posts:public:all',
+      'posts:public:notice',
+      'posts:public:blog',
+    );
   });
 });

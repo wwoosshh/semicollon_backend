@@ -5,12 +5,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseAdminService } from '../supabase/supabase-admin.service';
+import { ProfileCacheService } from '../cache/profile-cache.service';
 
 @Injectable()
 export class MembersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly supabase: SupabaseAdminService,
+    private readonly profileCache: ProfileCacheService,
   ) {}
 
   async list() {
@@ -41,10 +43,12 @@ export class MembersService {
       throw new NotFoundException('해당 부원을 찾을 수 없습니다.');
     }
 
-    return this.prisma.profiles.update({
+    const result = await this.prisma.profiles.update({
       where: { id: targetId },
       data: { role },
     });
+    await this.profileCache.invalidate(targetId);
+    return result;
   }
 
   async deleteMember(requesterId: string, targetId: string) {
@@ -56,5 +60,6 @@ export class MembersService {
     if (error) {
       throw new BadRequestException(error.message);
     }
+    await this.profileCache.invalidate(targetId);
   }
 }

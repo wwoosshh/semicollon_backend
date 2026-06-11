@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService } from '../cache/cache.service';
 
 export interface RecruitInfo {
   start: string | null;
@@ -18,11 +19,22 @@ export interface AboutContent {
 
 @Injectable()
 export class SettingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
+  ) {}
 
   private async getValue<T>(key: string): Promise<T | null> {
+    const cacheKey = `setting:${key}`;
+    const cached = await this.cache.get<T>(cacheKey);
+    if (cached !== null) return cached;
+
     const row = await this.prisma.settings.findUnique({ where: { key } });
-    return (row?.value as T) ?? null;
+    const value = (row?.value as T) ?? null;
+    if (value !== null) {
+      await this.cache.set(cacheKey, value, 300);
+    }
+    return value;
   }
 
   async getRecruit(): Promise<RecruitInfo> {
@@ -47,6 +59,7 @@ export class SettingsService {
       update: { value: { start, end } },
       create: { key: 'recruit_period', value: { start, end } },
     });
+    await this.cache.del('setting:recruit_period');
   }
 
   async setInviteCode(code: string): Promise<void> {
@@ -55,6 +68,7 @@ export class SettingsService {
       update: { value: code },
       create: { key: 'invite_code', value: code },
     });
+    await this.cache.del('setting:invite_code');
   }
 
   async getAbout(): Promise<AboutContent> {
@@ -84,5 +98,6 @@ export class SettingsService {
         create: { key: 'about_faq', value: content.faq as any },
       }),
     ]);
+    await this.cache.del('setting:about_history', 'setting:about_staff', 'setting:about_faq');
   }
 }

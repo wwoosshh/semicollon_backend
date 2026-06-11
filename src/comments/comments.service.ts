@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ProfileCacheService } from '../cache/profile-cache.service';
 import { PostsService } from '../posts/posts.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 
@@ -12,6 +13,7 @@ export class CommentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly postsService: PostsService,
+    private readonly profileCache: ProfileCacheService,
   ) {}
 
   async listForPost(postId: number, userId: string | undefined) {
@@ -43,11 +45,8 @@ export class CommentsService {
 
   async create(postId: number, userId: string, dto: CreateCommentDto) {
     // check that requester has a profile (is a member)
-    const profile = await this.prisma.profiles.findUnique({
-      where: { id: userId },
-      select: { id: true },
-    });
-    if (!profile) {
+    const role = await this.profileCache.getRole(userId);
+    if (!role) {
       throw new ForbiddenException('부원만 댓글을 작성할 수 있습니다.');
     }
 
@@ -71,11 +70,8 @@ export class CommentsService {
 
     const isAuthor = comment.author_id === userId;
     if (!isAuthor) {
-      const profile = await this.prisma.profiles.findUnique({
-        where: { id: userId },
-        select: { role: true },
-      });
-      if (profile?.role !== 'admin') {
+      const role = await this.profileCache.getRole(userId);
+      if (role !== 'admin') {
         throw new ForbiddenException('본인이 작성한 댓글만 삭제할 수 있습니다.');
       }
     }

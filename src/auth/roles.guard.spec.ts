@@ -16,12 +16,10 @@ describe('RolesGuard', () => {
     const reflector = {
       getAllAndOverride: jest.fn().mockReturnValue(requiredRoles),
     } as unknown as Reflector;
-    const prisma = {
-      profiles: {
-        findUnique: jest.fn().mockResolvedValue(dbRole ? { role: dbRole } : null),
-      },
+    const profileCache = {
+      getRole: jest.fn().mockResolvedValue(dbRole ?? null),
     } as any;
-    return new RolesGuard(reflector, prisma);
+    return new RolesGuard(reflector, profileCache);
   }
 
   it('allows when no roles are required', async () => {

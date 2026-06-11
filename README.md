@@ -38,5 +38,5 @@
 ## 배포 (Railway)
 
 - GitHub `semicollon_backend` 저장소를 Railway에 연결하면 railway.json이 빌드/시작 명령을 정의
-- 환경변수: `.env.example`의 모든 키를 Railway Variables에 설정
+- 환경변수: `.env.example`의 모든 키를 Railway Variables에 설정 (`REDIS_URL`은 Redis 서비스 추가 시 자동 주입; 없으면 캐시 없이 동작)
 - 헬스체크: `GET /health`

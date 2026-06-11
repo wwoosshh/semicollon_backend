@@ -6,14 +6,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PrismaService } from '../prisma/prisma.service';
+import { ProfileCacheService } from '../cache/profile-cache.service';
 import { ROLES_KEY } from './roles.decorator';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly prisma: PrismaService,
+    private readonly profileCache: ProfileCacheService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -27,11 +27,8 @@ export class RolesGuard implements CanActivate {
     if (!req.user?.id) {
       throw new UnauthorizedException('로그인이 필요합니다.');
     }
-    const profile = await this.prisma.profiles.findUnique({
-      where: { id: req.user.id },
-      select: { role: true },
-    });
-    if (!profile || !required.includes(profile.role)) {
+    const role = await this.profileCache.getRole(req.user.id);
+    if (!role || !required.includes(role)) {
       throw new ForbiddenException('권한이 없습니다.');
     }
     return true;
